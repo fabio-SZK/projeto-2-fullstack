@@ -17,7 +17,7 @@ const cache = redisCache({
 
 /**
  * GET /api/cocktails
- * Busca coquetéis com filtros opcionais
+ * Busca coquetéis com filtros opcionais 
  * Query params:
  *   - search: busca por nome (text search)
  *   - ingredient: busca por ingrediente (case-insensitive)
@@ -29,6 +29,7 @@ const cache = redisCache({
  */
 router.get(
   '/cocktails',
+  requireAuth, // Middleware de autenticação
   cache.route({ expire: 3600 }), // Cache de 1 hora
   async (req, res, next) => {
     try {
