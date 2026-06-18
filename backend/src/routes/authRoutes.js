@@ -12,15 +12,15 @@ const router = express.Router();
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // 5 requisições por janela
-  message: 'Muitas tentativas de login. Tente novamente em 15 minutos.',
   standardHeaders: true, 
   legacyHeaders: false,
-  skip: (req) => {
-    // Log de tentativas bloqueadas
-    if (req.rateLimit.current > req.rateLimit.limit) {
-      console.warn(`[SEGURANÇA] Tentativa de força bruta bloqueada do IP: ${req.ip}`);
-    }
-    return false;
+  // O handler substitui o skip e captura o momento exato do bloqueio
+  handler: (req, res, next, options) => {
+    console.warn(`[SEGURANÇA] Tentativa de força bruta bloqueada do IP: ${req.ip}`);
+    
+    return res.status(429).json({
+      error: 'Muitas tentativas de login. Tente novamente em 15 minutos.'
+    });
   },
 });
 

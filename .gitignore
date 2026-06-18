@@ -12,5 +12,6 @@ node_modules/
 *.key
 *.pem
 *.crt
+*.cert
 
 seed.js
