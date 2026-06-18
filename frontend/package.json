@@ -1,0 +1,35 @@
+{
+  "name": "Cocktaildb",
+  "version": "1.0.0",
+  "description": "Single Page Application para busca de coquetéis com Backend local",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "React",
+    "Material-UI",
+    "TheCocktailDB",
+    "SPA"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.0.0",
+    "@mui/material": "^9.0.0",
+    "axios": "^1.7.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.18.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.10",
+    "vite-plugin-compression": "^0.5.1"
+  }
+}
