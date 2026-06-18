@@ -9,8 +9,12 @@ const morgan = require('morgan');
 const winston = require('winston');
 const expressWinston = require('express-winston');
 const cors = require('cors');
+const sanitizer = require('perfect-express-sanitizer');
+const xss = require('xss');
 
 const { connectDB } = require('./src/config/database');
+const authRoutes = require('./src/routes/authRoutes');
+const cocktailRoutes = require('./src/routes/cocktailRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -93,83 +97,40 @@ app.use(
   })
 );
 
+// Sanitização global com perfect-express-sanitizer
+app.use(
+  sanitizer.clean({
+    level: 5, // Nível de sanitização
+    xss: true, // Remove XSS
+    noSql: true, // Remove NoSQL injection
+    sql: true, // Remove SQL injection
+  })
+);
+
+app.locals.xss = xss;
+
+
+app.locals.sanitizeString = (str) => {
+  if (typeof str !== 'string') return '';
+  return xss(str.trim().slice(0, 500)); 
+};
+
 /**
- * Gerar certificados auto-assinados para HTTPS local
+ * Carregar certificados HTTPS local
  */
 function getOrCreateCertificates() {
   const certDir = path.join(__dirname, 'certs');
   const keyPath = path.join(certDir, 'server.key');
-  const certPath = path.join(certDir, 'server.crt');
+  const certPath = path.join(certDir, 'server.cert');
 
-  // Se já existem, retornar
-  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
-    return {
-      key: fs.readFileSync(keyPath),
-      cert: fs.readFileSync(certPath),
-    };
+  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    logger.error('Certificados HTTPS não encontrados. Execute: openssl req -x509 -newkey rsa:2048 -keyout certs/server.key -out certs/server.crt -days 365 -nodes -subj "/CN=localhost"');
+    process.exit(1);
   }
-
-  // Caso contrário, usar certificados padrão genéricos para teste
-  // Estes são certificados auto-assinados pré-gerados apenas para teste
-  const devKey = `-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA2Z3qX2BTLS/HQvKGv1TIpj8ZzJqKvA7EZ8L7JYX7PrVpnvJn
-Q1zRhC6CJKzj7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9QIDAQABAoIBAAX3cKp/kqvp3Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9QECQQDkjP7J
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0ZAkEA73fP3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9QJBAMaXqX3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q
-7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q
-CQQDkjP3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3
-K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3
-K9Q7Y0Z3K9QJBAKtzXg==
------END RSA PRIVATE KEY-----`;
-
-  const devCert = `-----BEGIN CERTIFICATE-----
-MIIDazCCAlOgAwIBAgIUXy3OZ3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0ZDANBgkqhkiG9w0B
-AQsFADB5MQswCQYDVQQGEwJCUzEYMBYGA1UECAgMT3V0ZXIgU3BhY2UxFjAUBgNV
-BAcMDU51bGwgSXNsYW5kczEXMBUGA1UECgwOU2F0ZWxsaXRlIENvcnAxHDAaBgNV
-BAsMA1ItJkQxGjAYBgNVBAMMEVNhdGVsbGl0ZSBDZXJ0LiBDQTAeFw0yNDAzMDcy
-MDUyNDVaFw0yNTAzMDcyMDUyNDVaMIGAMQswCQYDVQQGEwJCUzEYMBYGA1UECAgM
-T3V0ZXIgU3BhY2UxFjAUBgNVBAcMDU51bGwgSXNsYW5kczEXMBUGA1UECgwOU2F0
-ZWxsaXRlIENvcnAxHDAaBgNVBAsMA1ItJkQxIzAhBgNVBAMMGmxvY2FsaG9zdC5z
-YXRlbGxpdGUuY29ydDAggZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBANmd6l9g
-Uy0vx0LyhrxEyKY/GcyairwOxGfC+yWF+z61aZ7yZ0Nc0YQugiSs4+2NGdyvUO2N
-GdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2N
-GdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2N
-GdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NGdyvUO2NEYIDAQABo1MwUTAdBgNVHQ4E
-FgQUGXy3OZ3K9Q7Y0Z3K9Q7Y0Z3Q7Y0wHwYDVR0jBBgwFoAUGXy3OZ3K9Q7Y0Z3K
-9Q7Y0Z3Q7Y0wDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOBAQBYOZ3K
-9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3
-K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z
-3K9Q7Y0Z3K9Q7Y0Z3K9Q7Y0Z3K9Q
------END CERTIFICATE-----`;
-
-  if (!fs.existsSync(certDir)) {
-    fs.mkdirSync(certDir, { recursive: true });
-  }
-
-  // Salvar certificados
-  fs.writeFileSync(keyPath, devKey);
-  fs.writeFileSync(certPath, devCert);
-
-  logger.info('✓ Certificados HTTPS auto-assinados criados/carregados');
 
   return {
-    key: devKey,
-    cert: devCert,
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
   };
 }
 
@@ -181,11 +142,17 @@ async function startServer() {
     // Conectar ao banco de dados
     await connectDB();
 
-    // Placeholder para as rotas
+    // ROTAS DA APLICAÇÃO 
+    // Rota de autenticação 
+    app.use('/api', authRoutes);
+
+    // Rota de coquetéis 
+    app.use('/api', cocktailRoutes);
+
+    // Fallback para rotas indefinidas
     app.use('/api', (req, res) => {
       res.status(404).json({ error: 'Rota não encontrada' });
     });
-
 
     app.get('/health', (req, res) => {
       res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -224,9 +191,9 @@ async function startServer() {
 
     server.listen(PORT, () => {
       logger.info(`Servidor HTTPS rodando em: https://localhost:${PORT}`);
-      logger.info(`Health check disponível em: https://localhost:${PORT}/health`);
-    });
 
+      logger.info(`Logging ativo em: logs/`);
+    });
 
     process.on('SIGTERM', async () => {
       logger.warn('SIGTERM recebido. Encerrando servidor...');

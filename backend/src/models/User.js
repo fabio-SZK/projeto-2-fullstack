@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Senha é obrigatória'],
       minlength: [6, 'Senha deve ter no mínimo 6 caracteres'],
-      select: false, // Não retorna a senha por padrão nas consultas
+      select: false, // Não retornarr a senha
     },
     isActive: {
       type: Boolean,
@@ -32,28 +32,27 @@ const userSchema = new mongoose.Schema(
 );
 
 /**
- * HOOK PRÉ-SAVE: Criptografa a senha com bcrypt antes de salvar
+ * Criptografa a senha com bcrypt antes de salvar
  * Só criptografa se a senha foi modificada
  */
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
   // Se a senha não foi modificada, pula para o próximo middleware
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
 
   try {
-    // Gera salt com 10 rounds (padrão seguro)
+    // Gera salt com 10 rounds
     const salt = await bcrypt.genSalt(10);
     // Hash da senha
     this.password = await bcrypt.hash(this.password, salt);
-    next();
   } catch (error) {
-    next(error);
+    throw error;
   }
 });
 
 /**
- * MÉTODO DE INSTÂNCIA: Compara senha fornecida com hash armazenado
+ * Compara senha fornecida com hash armazenado
  * Retorna true/false
  */
 userSchema.methods.comparePassword = async function (passwordProvided) {
@@ -61,7 +60,7 @@ userSchema.methods.comparePassword = async function (passwordProvided) {
 };
 
 /**
- * MÉTODO DE INSTÂNCIA: Retorna objeto público do usuário (sem senha)
+ * Retorna objeto público do usuário sem senha
  */
 userSchema.methods.toJSON = function () {
   const user = this.toObject();

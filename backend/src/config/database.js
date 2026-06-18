@@ -17,9 +17,9 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       retryWrites: true,
       retryReads: true,
-      // Evita deprecation warnings
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
     });
 
     console.log(`MongoDB conectado: ${connection.connection.host}`);

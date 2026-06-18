@@ -9,12 +9,11 @@ function generateDrinkId() {
 
 /**
  * Schema de Cocktail
- * Modelado ESTRITAMENTE conforme as regras em modelagem-cocktail.md
  * Mantém compatibilidade com estrutura JSON da API TheCocktailDB
  */
 const cocktailSchema = new mongoose.Schema(
   {
-    // ID único no formato string (TheCocktailDB-compatible)
+    // ID único no formato string 
     idDrink: {
       type: String,
       required: true,
@@ -39,7 +38,7 @@ const cocktailSchema = new mongoose.Schema(
       default: '',
     },
 
-    // Categoria (ex: "Ordinary Drink", "Cocktail")
+    // Categoria 
     strCategory: {
       type: String,
       required: [true, 'Categoria (strCategory) é obrigatória'],
@@ -47,14 +46,14 @@ const cocktailSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Tipo alcoólico (ex: "Alcoholic", "Non alcoholic")
+    // Tipo alcoólico
     strAlcoholic: {
       type: String,
       enum: ['Alcoholic', 'Non alcoholic', 'Optional alcohol'],
       default: 'Alcoholic',
     },
 
-    // Tipo de copo (ex: "Cocktail glass")
+    // Tipo de copo
     strGlass: {
       type: String,
       required: [true, 'Tipo de copo (strGlass) é obrigatório'],
@@ -77,13 +76,13 @@ const cocktailSchema = new mongoose.Schema(
       validate: {
         validator: function (v) {
           if (v === '') return true; // Permitir vazio
-          return /^https?:\/\/.+/.test(v); // Validar URL HTTP(S)
+          return /^https?:\/\/.+/.test(v); // Validar URL HTTP
         },
         message: 'URL da imagem deve ser HTTP ou HTTPS válida',
       },
     },
 
-    // INGREDIENTES E MEDIDAS (estrutura flat conforme API original)
+    // INGREDIENTES E MEDIDAS 
     // Ingrediente 1 a 15
     strIngredient1: { type: String, trim: true, default: '' },
     strIngredient2: { type: String, trim: true, default: '' },
@@ -123,7 +122,6 @@ const cocktailSchema = new mongoose.Schema(
     // Usa 'dateModified' em vez de 'updatedAt' para compatibilidade com API original
     toJSON: {
       transform: function (doc, ret) {
-        // Mapear updatedAt para dateModified conforme API original
         if (ret.updatedAt) {
           ret.dateModified = ret.updatedAt;
           delete ret.updatedAt;
@@ -142,23 +140,19 @@ const cocktailSchema = new mongoose.Schema(
 cocktailSchema.index({ strDrink: 'text', strCategory: 1, strAlcoholic: 1 });
 
 /**
- * MIDDLEWARE: Validação de ingredientes
+   Validação de ingredientes
  * Garante que não temos arrays vazios (conforme instrução do edital)
  */
-cocktailSchema.pre('save', function (next) {
+cocktailSchema.pre('save', function () {
   // Validação: se tem ingrediente, deve ter medida correspondente
   for (let i = 1; i <= 15; i++) {
     const ingredient = this[`strIngredient${i}`];
     const measure = this[`strMeasure${i}`];
 
-    // Se um está vazio, o outro também deve estar
     if ((ingredient && !measure) || (!ingredient && measure)) {
-      return next(
-        new Error(`strIngredient${i} e strMeasure${i} devem estar ambos preenchidos ou vazios`)
-      );
+      throw new Error(`strIngredient${i} e strMeasure${i} devem estar ambos preenchidos ou vazios`);
     }
   }
-  next();
 });
 
 /**
@@ -178,7 +172,7 @@ cocktailSchema.methods.getActiveIngredients = function () {
 };
 
 /**
- * MÉTODO ESTÁTICO: Busca por termo de texto (nome ou categoria)
+Busca por termo de texto (nome ou categoria)
  */
 cocktailSchema.statics.searchByTerm = function (term) {
   return this.find(
