@@ -1,4 +1,5 @@
 import React, { createContext, useReducer, useCallback } from 'react';
+import { useAuth } from './AuthContext'; // Importando nosso contexto de autenticação
 
 // Criar o Context
 export const CocktailContext = createContext();
@@ -28,59 +29,19 @@ export const ACTIONS = {
 const cocktailReducer = (state, action) => {
   switch (action.type) {
     case ACTIONS.FETCH_START:
-      return {
-        ...state,
-        loading: true,
-        error: null,
-        validationError: null,
-      };
-
+      return { ...state, loading: true, error: null, validationError: null };
     case ACTIONS.FETCH_SUCCESS:
-      return {
-        ...state,
-        cocktails: action.payload || [],
-        loading: false,
-        error: null,
-        validationError: null,
-      };
-
+      return { ...state, cocktails: action.payload || [], loading: false, error: null, validationError: null };
     case ACTIONS.FETCH_ERROR:
-      return {
-        ...state,
-        loading: false,
-        error: action.payload,
-        cocktails: [],
-      };
-
+      return { ...state, loading: false, error: action.payload, cocktails: [] };
     case ACTIONS.SET_VALIDATION_ERROR:
-      return {
-        ...state,
-        validationError: action.payload,
-      };
-
+      return { ...state, validationError: action.payload };
     case ACTIONS.CLEAR_ERROR:
-      return {
-        ...state,
-        error: null,
-        validationError: null,
-      };
-
+      return { ...state, error: null, validationError: null };
     case ACTIONS.SET_SEARCH_PARAMS:
-      return {
-        ...state,
-        searchTerm: action.payload.searchTerm,
-        searchType: action.payload.searchType,
-      };
-
+      return { ...state, searchTerm: action.payload.searchTerm, searchType: action.payload.searchType };
     case ACTIONS.RESET_RESULTS:
-      return {
-        ...state,
-        cocktails: [],
-        error: null,
-        validationError: null,
-        searchTerm: '',
-      };
-
+      return { ...state, cocktails: [], error: null, validationError: null, searchTerm: '' };
     default:
       return state;
   }
@@ -89,10 +50,12 @@ const cocktailReducer = (state, action) => {
 // Provider Component
 export const CocktailProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cocktailReducer, initialState);
+  
+  // Consumindo o token e a função de logout do nosso AuthContext
+  const { token, logout } = useAuth();
 
-  // Ação: Buscar coquetéis pela API
+  // Ação: Buscar coquetéis pela API Local
   const fetchCocktails = useCallback(async (searchTerm, searchType = 'name') => {
-    // Validação de campo obrigatório
     if (!searchTerm || searchTerm.trim() === '') {
       dispatch({
         type: ACTIONS.SET_VALIDATION_ERROR,
@@ -105,27 +68,38 @@ export const CocktailProvider = ({ children }) => {
     dispatch({ type: ACTIONS.SET_SEARCH_PARAMS, payload: { searchTerm, searchType } });
 
     try {
-      let url;
+      // Base da URL Local
+      let url = 'https://localhost:3000/api/cocktails';
 
+      // Montando os Query Params conforme o contrato da API
       if (searchType === 'name') {
-        url = `https://localhost:3000/api/cocktails?search=${encodeURIComponent(
-          searchTerm
-        )}`;
+        url += `?search=${encodeURIComponent(searchTerm)}`;
       } else if (searchType === 'ingredient') {
-        url = `https://www.thecocktaildb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(
-          searchTerm
-        )}`;
+        url += `?ingredient=${encodeURIComponent(searchTerm)}`;
       } else {
         throw new Error('Tipo de busca inválido');
       }
 
-      const response = await fetch(url);
+      // Disparando o Fetch com o cabeçalho de Autorização JWT
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-      if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status}`);
+      // Tratamento de segurança: Token inválido ou expirado
+      if (response.status === 401 || response.status === 403) {
+        logout();
+        throw new Error('Sessão expirada ou não autorizada. Por favor, faça login novamente.');
       }
 
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Erro na API: ${response.status}`);
+      }
 
       // Normalizar a resposta: drinks pode ser null, undefined, ou []
       const drinks = data?.drinks;
@@ -153,14 +127,12 @@ export const CocktailProvider = ({ children }) => {
         payload: `Erro ao buscar coquetéis: ${err.message}`,
       });
     }
-  }, []);
+  }, [token, logout]); // O Hook agora depende do token e do logout
 
-  // Ação: Limpar erros
   const clearErrors = useCallback(() => {
     dispatch({ type: ACTIONS.CLEAR_ERROR });
   }, []);
 
-  // Ação: Resetar resultados
   const resetResults = useCallback(() => {
     dispatch({ type: ACTIONS.RESET_RESULTS });
   }, []);
@@ -180,13 +152,10 @@ export const CocktailProvider = ({ children }) => {
   );
 };
 
-// Hook customizado para usar o Context
 export const useCocktail = () => {
   const context = React.useContext(CocktailContext);
-
   if (!context) {
     throw new Error('useCocktail deve ser usado dentro de um CocktailProvider');
   }
-
   return context;
 };

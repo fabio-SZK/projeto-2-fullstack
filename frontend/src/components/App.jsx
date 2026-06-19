@@ -1,18 +1,22 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import {
-  CssBaseline,
-  Container,
-  Box,
-  Typography,
-} from '@mui/material';
+import { CssBaseline, Container, Box, Typography, Button } from '@mui/material';
+import LogoutIcon from '@mui/icons-material/Logout';
+
+// Importação dos Contextos
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { CocktailProvider } from '../contexts/CocktailContext';
+
+// Importação dos Componentes
 import SearchBar from './SearchBar';
 import CocktailList from './CocktailList';
 import ErrorMessage from './ErrorMessage';
+import Login from './Login';
+import ProtectedRoute from './ProtectedRoute';
+import InsertCocktail from './InsertCocktail';
 
-// Tema customizado (Mantido o original)
+// Tema customizado
 const theme = createTheme({
   palette: {
     primary: { main: '#333333', light: '#666666', dark: '#000000' },
@@ -57,65 +61,90 @@ const theme = createTheme({
   },
 });
 
+function AppHeader() {
+  const { token, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <Box
+      sx={{
+        marginBottom: '40px',
+        borderBottom: '1px solid #e0e0e0',
+        paddingBottom: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+    >
+      <Box sx={{ flexGrow: 1 }}>
+        <Typography variant="h4" component="h1" sx={{ textAlign: 'left' }}>
+          TheCocktailDB
+        </Typography>
+        <Typography variant="body2" sx={{ textAlign: 'left', color: '#999999', marginTop: '8px' }}>
+          SPA de Coquetéis - Integrado com API Local
+        </Typography>
+      </Box>
+      
+      {/* Menu de Navegação - Exibido apenas se autenticado */}
+      {token && (
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button variant="contained" color="primary" onClick={() => navigate('/buscar')}>
+            Buscar
+          </Button>
+          <Button variant="contained" color="secondary" onClick={() => navigate('/inserir')}>
+            Inserir Coquetel
+          </Button>
+          <Button variant="outlined" color="error" startIcon={<LogoutIcon />} onClick={handleLogout}>
+            Sair
+          </Button>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <CocktailProvider>
-        <Box
-          sx={{
-            minHeight: '100vh',
-            backgroundColor: '#ffffff',
-            paddingTop: '40px',
-            paddingBottom: '40px',
-          }}
-        >
-          <Container maxWidth="lg">
-            {/* Header */}
-            <Box
-              sx={{
-                marginBottom: '40px',
-                borderBottom: '1px solid #e0e0e0',
-                paddingBottom: '24px',
-              }}
-            >
-              <Typography variant="h4" component="h1" sx={{ textAlign: 'center' }}>
-                TheCocktailDB
-              </Typography>
-              <Typography variant="body2" sx={{ textAlign: 'center', color: '#999999', marginTop: '8px' }}>
-                SPA de Coquetéis - Integrado com API Local
-              </Typography>
-            </Box>
+      <AuthProvider>
+        <CocktailProvider>
+          <Box sx={{ minHeight: '100vh', backgroundColor: '#ffffff', paddingTop: '40px', paddingBottom: '40px' }}>
+            <Container maxWidth="lg">
+              
+              <AppHeader />
 
-            {/* Base do Roteamento */}
-            <Routes>
-              {/* Redireciona a raiz para a tela principal (que futuramente será protegida) */}
-              <Route path="/" element={<Navigate to="/buscar" replace />} />
+              <Routes>
+                <Route path="/" element={<Navigate to="/buscar" replace />} />
+                <Route path="/login" element={<Login />} />
 
-              {/* Rota Pública */}
-              <Route path="/login" element={
-                <div>{/* Placeholder: Será implementado na Fase 3 */}</div>
-              } />
+                <Route path="/buscar" element={
+                  <ProtectedRoute>
+                    <SearchBar />
+                    <Box sx={{ marginBottom: '24px' }}>
+                      <CocktailList />
+                    </Box>
+                    <ErrorMessage />
+                  </ProtectedRoute>
+                } />
 
-              {/* Rotas que serão Privadas (Fase 3) */}
-              <Route path="/buscar" element={
-                <>
-                  <SearchBar />
-                  <Box sx={{ marginBottom: '24px' }}>
-                    <CocktailList />
-                  </Box>
-                  <ErrorMessage />
-                </>
-              } />
+                {/* ROTA ATUALIZADA DA FASE 4 */}
+                <Route path="/inserir" element={
+                  <ProtectedRoute>
+                    <InsertCocktail />
+                  </ProtectedRoute>
+                } />
+              </Routes>
 
-              <Route path="/inserir" element={
-                <div>{/* Placeholder: Será implementado na Fase 4 */}</div>
-              } />
-            </Routes>
-
-          </Container>
-        </Box>
-      </CocktailProvider>
+            </Container>
+          </Box>
+        </CocktailProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

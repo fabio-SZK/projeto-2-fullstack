@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     port: 3001, // Frontend em 3001, backend em 3000
     open: true,
-    https: true, // Necessário para comunicar com backend HTTPS
+    https: false, // Necessário para comunicar com backend HTTPS
   },
   build: {
     outDir: 'dist',
