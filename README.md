@@ -68,9 +68,8 @@ npm run dev
 
 ```
 
-> O servidor HTTPS estará escutando na porta `3000`. O arquivo `.env` gerado a partir do `.env.example` já contém as portas padrão do MongoDB (`27017`) e Redis (`6379`), além da origem liberada para o CORS (`http://localhost:3001`).
+O servidor HTTPS estará escutando na porta `3000`. O arquivo `.env` gerado a partir do `.env.example` já contém as portas padrão do MongoDB (`27017`) e Redis (`6379`), além da origem liberada para o CORS (`http://localhost:3001`).
 
-```
 
 ### 2. Iniciando o Front-end
 
@@ -85,7 +84,7 @@ npm run dev
 
 ```
 
-> A aplicação estará disponível no navegador em `https://localhost:3001` A partir daqui, toda a comunicação com a API ocorrerá automaticamente.
+A aplicação estará disponível no navegador em `https://localhost:3001` A partir daqui, toda a comunicação com a API ocorrerá automaticamente.
 
 
 ---
